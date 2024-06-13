@@ -1,7 +1,7 @@
 import requests
 
 url = 'https://notify-api.line.me/api/notify'
-token = 'qlClFGFwH1QNAZtRaIWLfexbv0LNmsuLQ0CVu7a32yK'
+token = '****'
 def lineNotify(msg,img,pid,sid):
     image = open('./output.jpg', 'rb') 
     imageFile = {'imageFile' : image}   # 設定圖片資訊
