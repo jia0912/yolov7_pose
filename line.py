@@ -1,7 +1,11 @@
 import requests
-
+import json
 url = 'https://notify-api.line.me/api/notify'
-token = '****'
+# read config.json to get the token
+with open('config.json') as config_file:
+    config = json.load(config_file)
+    token = config['token']
+    
 def lineNotify(msg,img,pid,sid):
     image = open('./output.jpg', 'rb') 
     imageFile = {'imageFile' : image}   # 設定圖片資訊
