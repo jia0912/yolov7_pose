@@ -22,6 +22,13 @@ no_person_frames = 0
 person_entered = False
 person_leaved = False
 
+#read config
+with open('config.json') as config_file:
+    config = json.load(config_file)
+
+yolo_api_ip = config['yolo_api_ip']
+rtsp_source = config['rtsp_source']
+
 def load_model(weights, device):
     model = attempt_load(weights, map_location=device)  # Load FP32 model
     stride = int(model.stride.max())  # Model stride
@@ -92,6 +99,24 @@ def check_movement(prev_positions, curr_positions, frame_counts, fps, threshold=
             movements.append("move")
     return movements, frame_counts
 
+#request api server(Raspi)
+def make_request(data):
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        response = requests.post(yolo_api_ip, json=data)
+        if response.status_code == 200:
+            print(f"Data sent successfully at {current_time}")
+        else:
+            print(f"Failed to send data at {current_time}, status code: {response.status_code}")
+    except requests.exceptions.HTTPError as http_err:
+        print(f"HTTP error occurred at {current_time}: {http_err}")
+    except requests.exceptions.ConnectionError as conn_err:
+        print(f"Connection error occurred at {current_time}: {conn_err}")
+    except requests.exceptions.Timeout as timeout_err:
+        print(f"Timeout error occurred at {current_time}: {timeout_err}")
+    except requests.exceptions.RequestException as req_err:
+        print(f"An error occurred at {current_time}: {req_err}")
+
 def process_rtsp(rtsp_url, model, device, log_interval=10):
     global post_button, pre_movement, no_person_frames, person_leaved, person_entered
 
@@ -131,12 +156,7 @@ def process_rtsp(rtsp_url, model, device, log_interval=10):
                     "time": current_time,
                     "case": "light_off_sound"
                 }
-                
-                response = requests.post('http://192.168.51.39:5000/api/yolo', json=data)
-                if response.status_code == 200:
-                    print(f"Data sent successfully at {current_time}")
-                else:
-                    print(f"Failed to send data at {current_time}, status code: {response.status_code}")
+                make_request(data)                
                 no_person_frames = 0
         else:
             no_person_frames = 0
@@ -166,11 +186,7 @@ def process_rtsp(rtsp_url, model, device, log_interval=10):
                         "time": current_time,
                         "case": "ambulance_sound"
                     }
-                    response = requests.post('http://192.168.51.39:5000/api/yolo', json=data)
-                    if response.status_code == 200:
-                        print(f"Data sent successfully at {current_time}")
-                    else:
-                        print(f"Failed to send data at {current_time}, status code: {response.status_code}")
+                    make_request(data)
         
         if len(avg_positions) == 1 and not person_entered:
             person_entered = True
@@ -183,11 +199,7 @@ def process_rtsp(rtsp_url, model, device, log_interval=10):
                 "time": current_time,
                 "case": "light_on_sound"
             }
-            response = requests.post('http://192.168.51.39:5000/api/yolo', json=data)
-            if response.status_code == 200:
-                print(f"Data sent successfully at {current_time}")
-            else:
-                print(f"Failed to send data at {current_time}, status code: {response.status_code}")
+            make_request(data)
         prev_positions = avg_positions
         
         # Resize frame to original size
@@ -211,7 +223,7 @@ def process_rtsp(rtsp_url, model, device, log_interval=10):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', nargs='+', type=str, default='yolov7-w6-pose.pt', help='model.pt path(s)')
-    parser.add_argument('--source', type=str, default='rtsp://user:u20732085@192.168.51.88:88/videoMain', help='RTSP source')
+    parser.add_argument('--source', type=str, default=rtsp_source, help='RTSP source')
     parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     opt = parser.parse_args()
     
